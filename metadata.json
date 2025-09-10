@@ -1,0 +1,5 @@
+{
+  "name": "Storyteller's Assistant",
+  "description": "An AI-powered web application to help users enhance their storytelling by providing analysis, suggestions, and rewritten versions based on selected styles and audiences.",
+  "requestFramePermissions": []
+}
