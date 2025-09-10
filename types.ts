@@ -32,5 +32,6 @@ export interface Preset {
     storyStyle: string;
     language: string;
     audience: Audience;
+    prompt: string;
   };
 }

@@ -1,6 +1,6 @@
 import React from 'react';
-import type { FormData, Audience } from '../types';
-import { STORY_STYLES, LANGUAGES, OUTPUT_LENGTHS, PRESETS } from '../constants';
+import type { FormData, Audience, Preset } from '../types';
+import { STORY_STYLES, LANGUAGES, OUTPUT_LENGTHS } from '../constants';
 import { SparklesIcon } from './icons/SparklesIcon';
 
 interface InputFormProps {
@@ -9,29 +9,52 @@ interface InputFormProps {
   onFormChange: (field: keyof FormData, value: any) => void;
   onAudienceChange: (field: keyof Audience, value: string) => void;
   onSubmit: () => void;
+  presets: Preset[];
   selectedPreset: string;
   onPresetChange: (name: string) => void;
+  onSavePreset: () => void;
+  onDeletePreset: () => void;
 }
 
-const InputForm: React.FC<InputFormProps> = ({ formData, isLoading, onFormChange, onAudienceChange, onSubmit, selectedPreset, onPresetChange }) => {
+const InputForm: React.FC<InputFormProps> = ({
+  formData,
+  isLoading,
+  onFormChange,
+  onAudienceChange,
+  onSubmit,
+  presets,
+  selectedPreset,
+  onPresetChange,
+  onSavePreset,
+  onDeletePreset
+}) => {
   const commonInputClass = "w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
   const commonLabelClass = "block text-sm font-medium text-gray-400 mb-1";
-  
+  const buttonClass = "px-3 py-2 text-sm font-medium text-gray-300 bg-gray-700 border border-gray-600 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+
   return (
     <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700 shadow-lg space-y-6">
       <div>
         <label htmlFor="stylePreset" className={commonLabelClass}>
-          Chọn cài đặt sẵn (Preset)
+          Cài đặt (Preset)
         </label>
-        <select
-          id="stylePreset"
-          value={selectedPreset}
-          onChange={(e) => onPresetChange(e.target.value)}
-          className={commonInputClass}
-        >
-          <option value="custom">-- Tùy chỉnh --</option>
-          {PRESETS.map(preset => <option key={preset.name} value={preset.name}>{preset.name}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            id="stylePreset"
+            value={selectedPreset}
+            onChange={(e) => onPresetChange(e.target.value)}
+            className={`${commonInputClass} flex-grow`}
+          >
+            <option value="custom">-- Tùy chỉnh --</option>
+            {presets.map(preset => <option key={preset.name} value={preset.name}>{preset.name}</option>)}
+          </select>
+          <button onClick={onSavePreset} disabled={selectedPreset !== 'custom'} className={buttonClass} title="Lưu cài đặt hiện tại thành một preset mới">
+            Lưu
+          </button>
+          <button onClick={onDeletePreset} disabled={selectedPreset === 'custom'} className={`${buttonClass} hover:bg-red-800/50 hover:border-red-600`} title="Xóa preset đang chọn">
+            Xóa
+          </button>
+        </div>
       </div>
 
       <div>

@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import type { StoryAnalysisResult, FormData, Audience } from './types';
+import React, { useState, useCallback, useEffect } from 'react';
+import type { StoryAnalysisResult, FormData, Audience, Preset } from './types';
 import { enhanceStory } from './services/geminiService';
 import Header from './components/Header';
 import InputForm from './components/InputForm';
 import ResultDisplay from './components/ResultDisplay';
 import Loader from './components/Loader';
-import { PRESETS } from './constants';
+import { PRESETS as DEFAULT_PRESETS } from './constants';
 
 const App: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
@@ -21,10 +21,27 @@ const App: React.FC = () => {
     outputLength: 500,
   });
 
+  const [userPresets, setUserPresets] = useState<Preset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string>('custom');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [result, setResult] = useState<StoryAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedPresets = localStorage.getItem('storyteller_presets');
+      if (savedPresets) {
+        setUserPresets(JSON.parse(savedPresets));
+      } else {
+        // If no presets in localStorage, load defaults and save them
+        setUserPresets(DEFAULT_PRESETS);
+        localStorage.setItem('storyteller_presets', JSON.stringify(DEFAULT_PRESETS));
+      }
+    } catch (e) {
+      console.error("Failed to load presets from localStorage", e);
+      setUserPresets(DEFAULT_PRESETS);
+    }
+  }, []);
 
   const handleFormChange = useCallback((field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -44,16 +61,74 @@ const App: React.FC = () => {
     if (presetName === 'custom') {
       return;
     }
-    const preset = PRESETS.find(p => p.name === presetName);
+    const preset = userPresets.find(p => p.name === presetName);
     if (preset) {
+        if (formData.inputText.trim() !== '' && formData.inputText.trim() !== preset.settings.prompt.trim()) {
+            if (!window.confirm('Hành động này sẽ ghi đè lên nội dung hiện tại của bạn. Bạn có muốn tiếp tục không?')) {
+                // If user cancels, revert the dropdown selection
+                setSelectedPreset(selectedPreset); 
+                return;
+            }
+        }
       setFormData(prev => ({
         ...prev,
+        inputText: preset.settings.prompt,
         storyStyle: preset.settings.storyStyle,
         language: preset.settings.language,
         audience: { ...preset.settings.audience },
       }));
     }
-  }, []);
+  }, [userPresets, formData.inputText, selectedPreset]);
+  
+  const handleSavePreset = () => {
+    const presetName = window.prompt("Nhập tên cho cài đặt của bạn:");
+    if (!presetName || presetName.trim() === '') {
+      return; // User cancelled or entered empty name
+    }
+
+    const existingPresetIndex = userPresets.findIndex(p => p.name === presetName);
+    if (existingPresetIndex !== -1) {
+      if (!window.confirm(`Cài đặt "${presetName}" đã tồn tại. Bạn có muốn ghi đè không?`)) {
+        return;
+      }
+    }
+
+    const newPreset: Preset = {
+      name: presetName.trim(),
+      settings: {
+        storyStyle: formData.storyStyle,
+        language: formData.language,
+        audience: { ...formData.audience },
+        prompt: formData.inputText, // Save current text as the prompt for this preset
+      }
+    };
+
+    let updatedPresets;
+    if (existingPresetIndex !== -1) {
+        updatedPresets = [...userPresets];
+        updatedPresets[existingPresetIndex] = newPreset;
+    } else {
+        updatedPresets = [...userPresets, newPreset];
+    }
+    
+    setUserPresets(updatedPresets);
+    localStorage.setItem('storyteller_presets', JSON.stringify(updatedPresets));
+    setSelectedPreset(newPreset.name);
+    alert(`Đã lưu cài đặt "${newPreset.name}"!`);
+  };
+
+  const handleDeletePreset = () => {
+    if (selectedPreset === 'custom') return;
+
+    if (window.confirm(`Bạn có chắc chắn muốn xóa cài đặt "${selectedPreset}" không?`)) {
+      const updatedPresets = userPresets.filter(p => p.name !== selectedPreset);
+      setUserPresets(updatedPresets);
+      localStorage.setItem('storyteller_presets', JSON.stringify(updatedPresets));
+      setSelectedPreset('custom');
+      alert(`Đã xóa cài đặt "${selectedPreset}".`);
+    }
+  };
+
 
   const handleSubmit = async () => {
     if (!formData.inputText.trim()) {
@@ -89,8 +164,11 @@ const App: React.FC = () => {
           onAudienceChange={handleAudienceChange}
           onSubmit={handleSubmit}
           isLoading={isLoading}
+          presets={userPresets}
           selectedPreset={selectedPreset}
           onPresetChange={handlePresetChange}
+          onSavePreset={handleSavePreset}
+          onDeletePreset={handleDeletePreset}
         />
 
         {error && (
